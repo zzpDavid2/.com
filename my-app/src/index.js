@@ -1,6 +1,37 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getFirestore, onSnapshot } from "firebase/firestore";
+import { getAnalytics } from "firebase/analytics";
+import { collection, addDoc, getDocs, setDoc, doc} from "firebase/firestore"; 
+import firebase from 'firebase/compat/app';
+import { query, orderBy, limit } from "firebase/firestore";  
+
+// import admin from 'firebase-admin'
+
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyBdh_C04oeazUDTMq9rh30ltt6QcV1fr2E",
+  authDomain: "keen-answer-283707.firebaseapp.com",
+  projectId: "keen-answer-283707",
+  storageBucket: "keen-answer-283707.appspot.com",
+  messagingSenderId: "348569078084",
+  appId: "1:348569078084:web:5bd1b85cd9cde90b31af11",
+  measurementId: "G-YSB2SQYFHC"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+const db = getFirestore();
+// FieldValue = require('firebase-admin').firestore.FieldValue;
 
 function Square(props) {
   return(
@@ -43,6 +74,8 @@ class Board extends React.Component {
   }
 }
 
+var gameID = null;
+
 class Game extends React.Component {
   constructor(props){
     super(props);
@@ -50,14 +83,39 @@ class Game extends React.Component {
       history: [{
         squares: Array(9).fill(" "),
       }],
+      stepNumber: 0,
       xIsNext: true,
+      // createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     }
+    // const querySnapshot = getDocs(collection(db, "games"));
+    // const query = 
+
+    gameID = prompt('Please enter the gameID that you want to join. Entering a new ID will create a new game.')
+
+    try {
+      const docRef = setDoc(doc(db, "games", gameID), this.state);
+      console.log("Document written with ID: ", docRef.id);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
+
+    const unsub = onSnapshot(doc(db, "games", gameID), (doc) => {
+      this.setState(doc.data());
+    });
   }
 
   handleClick(i){
-    const history = this.state.history;
+    try {
+      const docRef = setDoc(doc(db, "games", gameID), this.state);
+      console.log("Document written with ID: ", docRef.id);
+    } catch (e) {
+      console.error("Error adding document: ", e);
+    }
+
+    const history = this.state.history.slice(0, this.state.stepNumber + 1);
     const current = history[history.length - 1];
     const squares = current.squares.slice();
+
     if(calculateWinner(squares) || squares[i] !== " "){
       return;
     }
@@ -66,22 +124,39 @@ class Game extends React.Component {
       history: history.concat([{
         squares: squares
       }]),
+      stepNumber: history.length,
       xIsNext: !this.state.xIsNext,
     });
+
+    console.log(JSON.stringify(this.state));
+
+    setTimeout(() => {
+        try {
+          const docRef = setDoc(doc(db, "games", gameID), this.state);
+          console.log("Document written with ID: ", docRef.id);
+        } catch (e) {
+          console.error("Error adding document: ", e);
+        }
+      }, 100);
+
+  }
+
+  jumpTo(step){
+    this.setState({
+      stepNumber: step,
+      xIsNext: (step % 2) === 0,
+    })
   }
 
   render() {
     const history = this.state.history;
-    const current = history[history.length - 1];
+    const current = history[this.state.stepNumber];
     const winner = calculateWinner(current.squares);
 
     const moves = history.map((step, move) =>{
-      const desc = move ?
-      "go to move #" + move : 
-      "go to game start"
-
+      const desc = move ? "go to move #" + move : "start game"
       return (
-        <li>
+        <li key={move}>
           <button onClick={() => this.jumpTo(move)}>{desc}</button>
         </li>
       );
@@ -138,3 +213,8 @@ function calculateWinner(squares) {
   }
   return null;
 }
+
+function lastStep(){
+  const q = query(db, orderBy("stepNumber"), limit(1));
+}
+
