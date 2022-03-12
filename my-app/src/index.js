@@ -146,6 +146,15 @@ class Game extends React.Component {
       stepNumber: step,
       xIsNext: (step % 2) === 0,
     })
+
+    setTimeout(() => {
+        try {
+          const docRef = setDoc(doc(db, "games", gameID), this.state);
+          console.log("Document written with ID: ", docRef.id);
+        } catch (e) {
+          console.error("Error adding document: ", e);
+        }
+      }, 100);
   }
 
   render() {
